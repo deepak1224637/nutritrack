@@ -1,0 +1,306 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - NutriTrack Pro{% endblock %}
+{% block content %}
+<style>
+.dash { display: flex; min-height: calc(100vh - 64px); }
+.sidebar {
+  width: 220px; background: var(--bg2); border-right: 1px solid var(--border);
+  padding: 20px 12px; flex-shrink: 0; position: sticky; top: 64px; height: calc(100vh - 64px); overflow-y: auto;
+}
+.sb-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border-radius: var(--radius-sm); color: var(--text2); font-size: 0.875rem; font-weight: 500;
+  margin-bottom: 2px; transition: all 0.2s; cursor: pointer;
+}
+.sb-item:hover { color: var(--text); background: var(--bg3); }
+.sb-item.active { color: var(--green); background: rgba(0,229,160,0.1); }
+.sb-label { font-size: 0.68rem; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; padding: 12px 12px 6px; }
+.main { flex: 1; padding: 28px 32px; overflow-x: hidden; }
+@media(max-width:768px) { .sidebar { display: none; } .main { padding: 16px; } }
+
+/* STAT CARDS */
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; position: relative; overflow: hidden; }
+.stat-card::before { content: ''; position: absolute; inset: 0; border-radius: var(--radius); background: linear-gradient(135deg, rgba(255,255,255,0.02), transparent); }
+.stat-icon { font-size: 1.6rem; margin-bottom: 10px; }
+.stat-val { font-size: 2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+.stat-label { font-size: 0.75rem; color: var(--text2); margin-top: 4px; }
+.stat-sub { font-size: 0.75rem; color: var(--text3); margin-top: 8px; }
+
+/* MACRO BAR */
+.macro-item { margin-bottom: 14px; }
+.macro-header { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 0.82rem; }
+.macro-name { color: var(--text2); font-weight: 500; }
+.macro-val { font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+/* WATER SECTION */
+.water-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+.water-btn {
+  background: var(--bg3); border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  color: var(--text2); padding: 10px 6px; font-size: 0.8rem; font-weight: 600;
+  cursor: pointer; transition: all 0.2s; text-align: center; font-family: 'Sora', sans-serif;
+}
+.water-btn:hover { border-color: var(--blue); color: var(--blue); background: rgba(79,142,247,0.08); }
+
+/* MEAL CARDS */
+.meal-type-card {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  padding: 14px; transition: all 0.2s;
+}
+.meal-emoji { font-size: 1.5rem; margin-bottom: 6px; }
+.meal-name { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+.meal-cal { font-size: 0.75rem; color: var(--text2); }
+
+/* CHART */
+.chart-bar-wrap { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
+.chart-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.chart-bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.6s ease; min-height: 4px; }
+.chart-day { font-size: 0.7rem; color: var(--text3); }
+
+/* WATER TRACKER VISUAL */
+.water-circles { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.water-circle {
+  width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border);
+  display: flex; align-items: center; justify-content: center; font-size: 0.7rem; transition: all 0.3s;
+}
+.water-circle.filled { background: rgba(79,142,247,0.2); border-color: var(--blue); }
+
+.quick-log { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.quick-log h3 { font-size: 0.9rem; font-weight: 700; margin-bottom: 14px; }
+</style>
+
+<div class="dash">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sb-label">Menu</div>
+    <a href="{% url 'dashboard' %}" class="sb-item active">📊 Dashboard</a>
+    <a href="{% url 'log_meal' %}" class="sb-item">🍽️ Log Meal</a>
+    <a href="{% url 'meal_history' %}" class="sb-item">📋 History</a>
+    <div class="sb-label" style="margin-top:12px">Account</div>
+    <a href="{% url 'profile_setup' %}" class="sb-item">👤 Profile</a>
+    <a href="{% url 'logout' %}" class="sb-item" style="color:var(--orange)">🚪 Logout</a>
+
+    {% if profile.bmi %}
+    <div style="margin-top:24px;padding:14px;background:var(--bg3);border-radius:var(--radius-sm);border:1px solid var(--border)">
+      <div style="font-size:0.7rem;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px">Your BMI</div>
+      <div style="font-size:1.8rem;font-weight:800;font-family:'JetBrains Mono',monospace;color:var(--green)">{{ profile.bmi }}</div>
+      <div style="font-size:0.75rem;color:var(--text2);margin-top:2px">{{ profile.bmi_category }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="main">
+    <!-- Header -->
+    <div class="flex-between mb-24">
+      <div>
+        <h1 style="font-size:1.5rem;font-weight:800">Good {% now "H" as hour %}{% if hour < "12" %}Morning{% elif hour < "17" %}Afternoon{% else %}Evening{% endif %}, {{ user.first_name|default:user.username }} 👋</h1>
+        <p style="color:var(--text2);margin-top:4px;font-size:0.875rem">{{ today|date:"l, F j, Y" }}</p>
+      </div>
+      <a href="{% url 'log_meal' %}" class="btn btn-primary">+ Log Meal</a>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="grid-4 mb-24">
+      <div class="stat-card" style="border-top:3px solid var(--green)">
+        <div class="stat-icon">🔥</div>
+        <div class="stat-val" style="color:var(--green)">{{ total_cal }}</div>
+        <div class="stat-label">Calories Today</div>
+        <div class="stat-sub">Goal: {{ calorie_goal }} kcal</div>
+        <div class="progress-bar mt-8"><div class="progress-fill progress-green" style="width:{{ cal_percent }}%"></div></div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid var(--blue)">
+        <div class="stat-icon">💪</div>
+        <div class="stat-val" style="color:var(--blue)">{{ total_prot }}g</div>
+        <div class="stat-label">Protein</div>
+        <div class="stat-sub">Keep it up!</div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid var(--orange)">
+        <div class="stat-icon">🌾</div>
+        <div class="stat-val" style="color:var(--orange)">{{ total_carb }}g</div>
+        <div class="stat-label">Carbohydrates</div>
+        <div class="stat-sub">Energy source</div>
+      </div>
+      <div class="stat-card" style="border-top:3px solid var(--purple)">
+        <div class="stat-icon">🥑</div>
+        <div class="stat-val" style="color:var(--purple)">{{ total_fat }}g</div>
+        <div class="stat-label">Fats</div>
+        <div class="stat-sub">Healthy fats</div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:20px" class="mb-24">
+      <!-- LEFT -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- Weekly Chart -->
+        <div class="stat-card">
+          <div class="flex-between mb-24" style="margin-bottom:16px">
+            <div style="font-weight:700">Weekly Calories</div>
+            <span class="badge badge-green">7 days</span>
+          </div>
+          <div class="chart-bar-wrap" id="weeklyChart"></div>
+        </div>
+
+        <!-- Today's Meals -->
+        <div class="stat-card">
+          <div class="flex-between" style="margin-bottom:16px">
+            <div style="font-weight:700">Today's Meals</div>
+            <a href="{% url 'log_meal' %}" class="btn btn-outline" style="padding:6px 14px;font-size:0.8rem">+ Add</a>
+          </div>
+          <div class="grid-4" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+           
+            <div class="meal-type-card"><div class="meal-emoji">🌅</div><div class="meal-name">Breakfast</div><div class="meal-cal" id="cal-breakfast">0 kcal</div></div>
+            <div class="meal-type-card"><div class="meal-emoji">☀️</div><div class="meal-name">Lunch</div><div class="meal-cal" id="cal-lunch">0 kcal</div></div>
+            <div class="meal-type-card"><div class="meal-emoji">🌙</div><div class="meal-name">Dinner</div><div class="meal-cal" id="cal-dinner">0 kcal</div></div>
+            <div class="meal-type-card"><div class="meal-emoji">🍎</div><div class="meal-name">Snack</div><div class="meal-cal" id="cal-snack">0 kcal</div></div>
+          </div>
+          {% for meal in meals_today %}
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:10px">
+              {% if meal.image %}<img src="{{ meal.image.url }}" style="width:40px;height:40px;border-radius:8px;object-fit:cover">{% else %}<div style="width:40px;height:40px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:1.2rem">🍽️</div>{% endif %}
+              <div>
+                <div style="font-size:0.875rem;font-weight:600">{{ meal.food_name|default:"Unnamed meal" }}</div>
+                <div style="font-size:0.75rem;color:var(--text2)">{{ meal.get_meal_type_display }} · {{ meal.logged_at|time:"g:i A" }}</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="font-family:'JetBrains Mono';font-size:0.85rem;font-weight:700;color:var(--green)">{{ meal.calories|floatformat:0 }} kcal</span>
+              <a href="{% url 'delete_meal' meal.id %}" style="color:var(--text3);font-size:0.8rem" onclick="return confirm('Delete this meal?')">✕</a>
+            </div>
+          </div>
+          {% empty %}
+          <div style="text-align:center;padding:30px;color:var(--text3)">
+            <div style="font-size:2rem;margin-bottom:8px">🍽️</div>
+            <p>No meals logged today.</p>
+            <a href="{% url 'log_meal' %}" class="btn btn-outline" style="margin-top:12px;padding:8px 20px;font-size:0.85rem">Log your first meal</a>
+          </div>
+          {% endfor %}
+        </div>
+
+      </div>
+
+      <!-- RIGHT -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- Water Tracker -->
+        <div class="stat-card">
+          <div class="flex-between" style="margin-bottom:12px">
+            <div style="font-weight:700">💧 Hydration</div>
+            <span style="font-family:'JetBrains Mono';font-size:0.9rem;font-weight:700;color:var(--blue)" id="waterTotal">{{ total_water }}ml</span>
+          </div>
+          <div class="progress-bar"><div class="progress-fill progress-blue" style="width:{{ water_percent }}%" id="waterBar"></div></div>
+          <div style="font-size:0.75rem;color:var(--text3);margin-top:4px">Goal: {{ water_goal }}ml/day</div>
+          <div class="water-grid" style="margin-top:14px">
+            <button class="water-btn" onclick="logWater('water', 200)">💧<br>200ml</button>
+            <button class="water-btn" onclick="logWater('water', 350)">💧<br>350ml</button>
+            <button class="water-btn" onclick="logWater('milk', 200)">🥛<br>200ml Milk</button>
+            <button class="water-btn" onclick="logWater('water', 500)">💧<br>500ml</button>
+          </div>
+          <div style="margin-top:14px">
+            {% for log in recent_water %}
+            <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.8rem">
+              <span style="color:var(--text2)">{% if log.drink_type == 'milk' %}🥛{% else %}💧{% endif %} {{ log.get_drink_type_display }}</span>
+              <span style="font-family:'JetBrains Mono';color:var(--blue)">{{ log.amount_ml }}ml</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Macros breakdown -->
+        <div class="stat-card">
+          <div style="font-weight:700;margin-bottom:16px">🥗 Macro Split</div>
+          <div class="macro-item">
+            <div class="macro-header"><span class="macro-name">Protein</span><span class="macro-val" style="color:var(--blue)">{{ total_prot }}g</span></div>
+            <div class="progress-bar"><div class="progress-fill progress-blue" style="width:{% widthratio total_prot 150 100 %}%"></div></div>
+          </div>
+          <div class="macro-item">
+            <div class="macro-header"><span class="macro-name">Carbohydrates</span><span class="macro-val" style="color:var(--orange)">{{ total_carb }}g</span></div>
+            <div class="progress-bar"><div class="progress-fill progress-orange" style="width:{% widthratio total_carb 300 100 %}%"></div></div>
+          </div>
+          <div class="macro-item">
+            <div class="macro-header"><span class="macro-name">Fats</span><span class="macro-val" style="color:var(--purple)">{{ total_fat }}g</span></div>
+            <div class="progress-bar"><div class="progress-fill progress-purple" style="width:{% widthratio total_fat 80 100 %}%"></div></div>
+          </div>
+        </div>
+
+        <!-- Weight Log -->
+        <div class="stat-card">
+          <div style="font-weight:700;margin-bottom:14px">⚖️ Weight Log</div>
+          <form action="{% url 'log_weight' %}" method="post" style="display:flex;gap:8px;margin-bottom:12px">
+            {% csrf_token %}
+            <input type="number" name="weight_kg" step="0.1" placeholder="kg" style="flex:1" required>
+            <button type="submit" class="btn btn-primary" style="padding:10px 16px;white-space:nowrap">Log</button>
+          </form>
+          {% for wl in weight_logs %}
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.82rem">
+            <span style="color:var(--text2)">{{ wl.logged_at|date:"M j" }}</span>
+            <span style="font-family:'JetBrains Mono';font-weight:700">{{ wl.weight_kg }} kg</span>
+          </div>
+          {% empty %}
+          <p style="color:var(--text3);font-size:0.82rem;text-align:center;padding:12px 0">No weight logs yet</p>
+          {% endfor %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden water log form -->
+<form id="waterForm" action="{% url 'log_water' %}" method="post" style="display:none">
+  {% csrf_token %}
+  <input type="hidden" name="drink_type" id="waterType">
+  <input type="hidden" name="amount_ml" id="waterAmount">
+</form>
+
+<script>
+// Weekly chart
+const weeklyData = {{ weekly_data|safe }};
+const maxCal = Math.max(...weeklyData.map(d => d.calories), 1);
+const chart = document.getElementById('weeklyChart');
+weeklyData.forEach(d => {
+  const pct = (d.calories / maxCal) * 90;
+  chart.innerHTML += `
+    <div class="chart-col">
+      <div style="font-size:0.68rem;color:var(--text3);margin-bottom:2px">${d.calories||''}</div>
+      <div class="chart-bar" style="height:${pct}px;background:${d.calories > 0 ? 'linear-gradient(180deg,var(--green),var(--green2))' : 'var(--bg3)'}"></div>
+      <div class="chart-day">${d.date}</div>
+    </div>`;
+});
+
+// Meal breakdown
+const breakdown = {{ meal_breakdown|safe }};
+['breakfast','lunch','dinner','snack'].forEach(m => {
+  const el = document.getElementById('cal-' + m);
+  if (el) el.textContent = (breakdown[m] || 0) + ' kcal';
+});
+
+// Water logging
+function logWater(type, amount) {
+  document.getElementById('waterType').value = type;
+  document.getElementById('waterAmount').value = amount;
+  fetch("{% url 'log_water' %}", {
+    method: 'POST',
+    body: new FormData(document.getElementById('waterForm')),
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      // Update display
+      const totalEl = document.getElementById('waterTotal');
+      let cur = parseInt(totalEl.textContent);
+      cur += amount;
+      totalEl.textContent = cur + 'ml';
+      const goal = {{ water_goal }};
+      const pct = Math.min(100, (cur/goal)*100);
+      document.getElementById('waterBar').style.width = pct + '%';
+      // Show notification
+      const notif = document.createElement('div');
+      notif.className = 'message message-success';
+      notif.textContent = `✓ +${amount}ml ${type} logged!`;
+      document.querySelector('.messages-container') || document.body.appendChild(Object.assign(document.createElement('div'),{className:'messages-container',style:'position:fixed;top:80px;right:24px;z-index:1000'}));
+      (document.querySelector('.messages-container')).appendChild(notif);
+      setTimeout(() => notif.remove(), 3000);
+    }
+  });
+}
+</script>
+{% endblock %}

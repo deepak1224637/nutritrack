@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% block title %}Log Meal - NutriTrack Pro{% endblock %}
+{% block content %}
+<style>
+.log-page { max-width: 720px; margin: 0 auto; padding: 36px 16px; }
+.page-title { font-size: 1.7rem; font-weight: 800; margin-bottom: 6px; }
+.page-sub { color: var(--text2); font-size: 0.9rem; margin-bottom: 32px; }
+
+/* MEAL TYPE SELECTOR */
+.meal-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
+.meal-opt {
+  background: var(--bg3); border: 2px solid var(--border); border-radius: var(--radius);
+  padding: 16px 10px; text-align: center; cursor: pointer; transition: all 0.2s;
+}
+.meal-opt:hover { border-color: var(--green); }
+.meal-opt.selected { border-color: var(--green); background: rgba(0,229,160,0.08); }
+.meal-opt input[type=radio] { display: none; }
+.meal-emoji-lg { font-size: 1.8rem; margin-bottom: 6px; }
+.meal-lbl { font-size: 0.8rem; font-weight: 600; }
+
+/* IMAGE UPLOAD */
+.image-upload-zone {
+  border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px;
+  text-align: center; cursor: pointer; transition: all 0.3s; position: relative;
+  background: var(--bg3);
+}
+.image-upload-zone:hover, .image-upload-zone.dragover { border-color: var(--green); background: rgba(0,229,160,0.04); }
+.image-upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.upload-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.upload-text { font-size: 1rem; font-weight: 600; margin-bottom: 4px; }
+.upload-hint { font-size: 0.8rem; color: var(--text3); }
+#imagePreview { display: none; margin-top: 16px; }
+#imagePreview img { max-height: 220px; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+
+/* AI RESULTS */
+.ai-result {
+  background: linear-gradient(135deg, rgba(0,229,160,0.06), rgba(79,142,247,0.06));
+  border: 1px solid var(--green); border-radius: var(--radius); padding: 20px;
+  display: none; margin-top: 16px;
+}
+.ai-badge { background: var(--green); color: #0a0b0f; font-size: 0.7rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; display: inline-block; margin-bottom: 12px; }
+.ai-macros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 12px; }
+.ai-macro { background: var(--bg3); border-radius: var(--radius-sm); padding: 10px; text-align: center; }
+.ai-macro-val { font-size: 1.1rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+.ai-macro-label { font-size: 0.7rem; color: var(--text2); margin-top: 2px; }
+
+/* TABS */
+.tab-btns { display: flex; gap: 4px; background: var(--bg3); padding: 4px; border-radius: var(--radius-sm); margin-bottom: 20px; }
+.tab-btn { flex: 1; padding: 9px; border-radius: 8px; background: transparent; color: var(--text2); font-size: 0.85rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.2s; font-family: 'Sora', sans-serif; }
+.tab-btn.active { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,0.3); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* LOADING */
+.ai-loading { display: none; text-align: center; padding: 24px; }
+.spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--green); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+
+<div class="log-page">
+  <h1 class="page-title">🍽️ Log a Meal</h1>
+  <p class="page-sub">Track what you eat — scan with AI or enter manually</p>
+
+  <!-- MEAL TYPE -->
+  <div class="meal-selector">
+    <label class="meal-opt selected" id="opt-breakfast">
+      <input type="radio" name="meal_type_sel" value="breakfast" checked>
+      <div class="meal-emoji-lg">🌅</div>
+      <div class="meal-lbl">Breakfast</div>
+    </label>
+    <label class="meal-opt" id="opt-lunch">
+      <input type="radio" name="meal_type_sel" value="lunch">
+      <div class="meal-emoji-lg">☀️</div>
+      <div class="meal-lbl">Lunch</div>
+    </label>
+    <label class="meal-opt" id="opt-dinner">
+      <input type="radio" name="meal_type_sel" value="dinner">
+      <div class="meal-emoji-lg">🌙</div>
+      <div class="meal-lbl">Dinner</div>
+    </label>
+    <label class="meal-opt" id="opt-snack">
+      <input type="radio" name="meal_type_sel" value="snack">
+      <div class="meal-emoji-lg">🍎</div>
+      <div class="meal-lbl">Snack</div>
+    </label>
+  </div>
+
+  <!-- TAB SWITCH -->
+  <div class="tab-btns">
+    <button class="tab-btn active" onclick="switchTab('scan')">📸 AI Food Scan</button>
+    <button class="tab-btn" onclick="switchTab('manual')">✏️ Manual Entry</button>
+  </div>
+
+  <!-- AI SCAN TAB -->
+  <div class="tab-content active" id="tab-scan">
+    <div class="image-upload-zone" id="uploadZone">
+      <input type="file" id="foodImage" accept="image/*" capture="environment">
+      <div id="uploadPlaceholder">
+        <div class="upload-icon">📷</div>
+        <div class="upload-text">Take a photo or upload food image</div>
+        <div class="upload-hint">AI will automatically detect food and calculate calories, protein, fat & more</div>
+        <div style="margin-top:14px">
+          <span class="badge badge-green">✨ Powered by Claude AI</span>
+        </div>
+      </div>
+      <div id="imagePreview"><img id="previewImg" src="" alt="Food preview"></div>
+    </div>
+
+    <!-- AI Loading -->
+    <div class="ai-loading" id="aiLoading">
+      <div class="spinner"></div>
+      <p style="color:var(--text2);font-size:0.9rem">Analyzing your food with AI...</p>
+      <p style="color:var(--text3);font-size:0.8rem;margin-top:4px">Detecting nutrients, calories & macros</p>
+    </div>
+
+    <!-- AI Result -->
+    <div class="ai-result" id="aiResult">
+      <span class="ai-badge">✨ AI Analysis Complete</span>
+      <div style="font-size:1rem;font-weight:700" id="aiFood">—</div>
+      <div style="font-size:0.8rem;color:var(--text2);margin-top:4px" id="aiDesc">—</div>
+      <div class="ai-macros">
+        <div class="ai-macro"><div class="ai-macro-val" style="color:var(--green)" id="aiCal">—</div><div class="ai-macro-label">Calories</div></div>
+        <div class="ai-macro"><div class="ai-macro-val" style="color:var(--blue)" id="aiProt">—</div><div class="ai-macro-label">Protein</div></div>
+        <div class="ai-macro"><div class="ai-macro-val" style="color:var(--orange)" id="aiCarb">—</div><div class="ai-macro-label">Carbs</div></div>
+        <div class="ai-macro"><div class="ai-macro-val" style="color:var(--purple)" id="aiFat">—</div><div class="ai-macro-label">Fat</div></div>
+      </div>
+    </div>
+
+    <!-- Scan Form -->
+    <form method="post" action="{% url 'log_meal' %}" enctype="multipart/form-data" id="scanForm" style="margin-top:20px">
+      {% csrf_token %}
+      <input type="hidden" name="meal_type" id="scanMealType" value="breakfast">
+      <input type="hidden" name="calories" id="scanCalories">
+      <input type="hidden" name="protein_g" id="scanProtein">
+      <input type="hidden" name="carbs_g" id="scanCarbs">
+      <input type="hidden" name="fat_g" id="scanFat">
+      <input type="hidden" name="food_name" id="scanFoodName">
+      <input type="file" name="image" id="scanImageInput" style="display:none">
+      <div class="form-group">
+        <label>Food Name (optional, AI will fill)</label>
+        <input type="text" name="food_name" id="scanFoodInput" placeholder="e.g. Dal Chawal, Pizza, Salad">
+      </div>
+      <div style="display:flex;gap:12px">
+        <a href="{% url 'dashboard' %}" class="btn btn-ghost" style="flex:1;justify-content:center">Cancel</a>
+        <button type="submit" class="btn btn-primary" id="scanSubmit" style="flex:2;justify-content:center" disabled>
+          Log Meal
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- MANUAL TAB -->
+  <div class="tab-content" id="tab-manual">
+    <form method="post" action="{% url 'log_meal' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="meal_type" id="manualMealType" value="breakfast">
+      <div class="card" style="margin-bottom:16px">
+        <div class="form-group">
+          <label>Food Name *</label>
+          <input type="text" name="food_name" placeholder="e.g. Roti with Dal, Chicken Salad" required>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group"><label>Calories (kcal) *</label><input type="number" name="calories" placeholder="350" step="0.1" required></div>
+          <div class="form-group"><label>Protein (g)</label><input type="number" name="protein_g" placeholder="20" step="0.1"></div>
+          <div class="form-group"><label>Carbohydrates (g)</label><input type="number" name="carbs_g" placeholder="45" step="0.1"></div>
+          <div class="form-group"><label>Fat (g)</label><input type="number" name="fat_g" placeholder="12" step="0.1"></div>
+        </div>
+        <div class="form-group">
+          <label>Photo (optional)</label>
+          <input type="file" name="image" accept="image/*" class="form-input">
+        </div>
+      </div>
+      <div style="display:flex;gap:12px">
+        <a href="{% url 'dashboard' %}" class="btn btn-ghost" style="flex:1;justify-content:center">Cancel</a>
+        <button type="submit" class="btn btn-primary" style="flex:2;justify-content:center">✓ Log Meal</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// Tab switching
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// Meal type selection
+document.querySelectorAll('.meal-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('.meal-opt').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    const val = opt.querySelector('input').value;
+    document.getElementById('scanMealType').value = val;
+    document.getElementById('manualMealType').value = val;
+  });
+});
+
+// Image upload & AI analysis
+let analysisData = null;
+document.getElementById('foodImage').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Show preview
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('previewImg').src = ev.target.result;
+    document.getElementById('imagePreview').style.display = 'block';
+    document.getElementById('uploadPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+
+  // Analyze with AI
+  document.getElementById('aiLoading').style.display = 'block';
+  document.getElementById('aiResult').style.display = 'none';
+
+  try {
+    const formData = new FormData();
+    formData.append('image', file);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    const res = await fetch("{% url 'analyze_food' %}", { method: 'POST', body: formData });
+    const data = await res.json();
+
+    document.getElementById('aiLoading').style.display = 'none';
+
+    if (data.success || data.calories) {
+      analysisData = data;
+      document.getElementById('aiResult').style.display = 'block';
+      document.getElementById('aiFood').textContent = data.food_name || 'Food Item';
+      document.getElementById('aiDesc').textContent = data.analysis || '';
+      document.getElementById('aiCal').textContent = Math.round(data.calories || 0) + ' kcal';
+      document.getElementById('aiProt').textContent = (data.protein_g || 0) + 'g';
+      document.getElementById('aiCarb').textContent = (data.carbs_g || 0) + 'g';
+      document.getElementById('aiFat').textContent = (data.fat_g || 0) + 'g';
+
+      // Fill form hidden fields
+      document.getElementById('scanCalories').value = data.calories || 0;
+      document.getElementById('scanProtein').value = data.protein_g || 0;
+      document.getElementById('scanCarbs').value = data.carbs_g || 0;
+      document.getElementById('scanFat').value = data.fat_g || 0;
+      document.getElementById('scanFoodName').value = data.food_name || '';
+      document.getElementById('scanFoodInput').value = data.food_name || '';
+      document.getElementById('scanSubmit').disabled = false;
+      document.getElementById('scanSubmit').textContent = '✓ Log This Meal';
+
+      // Copy file to real form input
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      document.getElementById('scanImageInput').files = dt.files;
+    } else {
+      alert('Could not analyze image. Please try again or use manual entry.');
+    }
+  } catch (err) {
+    document.getElementById('aiLoading').style.display = 'none';
+    alert('Analysis failed: ' + err.message);
+  }
+});
+
+// Enable submit even without analysis
+document.getElementById('scanFoodInput').addEventListener('input', function() {
+  if (this.value.trim()) {
+    document.getElementById('scanSubmit').disabled = false;
+    document.getElementById('scanFoodName').value = this.value;
+  }
+});
+
+// Drag & drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+zone.addEventListener('drop', e => {
+  e.preventDefault();
+  zone.classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('foodImage').files = dt.files;
+    document.getElementById('foodImage').dispatchEvent(new Event('change'));
+  }
+});
+</script>
+{% endblock %}

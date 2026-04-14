@@ -1,0 +1,30 @@
+# =============================================
+#   NutriTrack Pro - Git Ignore File
+# =============================================
+
+# Environment Variables - KABHI PUSH MAT KARO!
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django
+db.sqlite3
+media/
+staticfiles/
+
+# Virtual Environment
+venv/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

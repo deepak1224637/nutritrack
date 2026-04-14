@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% block title %}Meal History - NutriTrack Pro{% endblock %}
+{% block content %}
+<style>
+.history-page { max-width: 800px; margin: 0 auto; padding: 36px 16px; }
+.meal-row {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 20px; margin-bottom: 10px; display: flex; align-items: center; gap: 16px;
+  transition: border-color 0.2s;
+}
+.meal-row:hover { border-color: var(--border); }
+.meal-thumb { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; flex-shrink: 0; }
+.meal-thumb-placeholder { width: 56px; height: 56px; border-radius: 10px; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+.meal-info { flex: 1; }
+.meal-nm { font-weight: 600; font-size: 0.95rem; }
+.meal-meta { font-size: 0.78rem; color: var(--text2); margin-top: 3px; }
+.meal-macros { display: flex; gap: 12px; align-items: center; }
+.macro-chip { font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
+</style>
+
+<div class="history-page">
+  <div class="flex-between mb-24">
+    <div>
+      <h1 style="font-size:1.6rem;font-weight:800">📋 Meal History</h1>
+      <p style="color:var(--text2);margin-top:4px;font-size:0.875rem">All your logged meals</p>
+    </div>
+    <a href="{% url 'log_meal' %}" class="btn btn-primary">+ Log Meal</a>
+  </div>
+
+  {% regroup meals by logged_at|date:"F j, Y" as meals_by_date %}
+  {% for group in meals_by_date %}
+  <div style="font-size:0.78rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.8px;margin:20px 0 8px">
+    {{ group.grouper }}
+  </div>
+  {% for meal in group.list %}
+  <div class="meal-row">
+    {% if meal.image %}
+    <img src="{{ meal.image.url }}" class="meal-thumb" alt="{{ meal.food_name }}">
+    {% else %}
+    <div class="meal-thumb-placeholder">
+      {% if meal.meal_type == 'breakfast' %}🌅{% elif meal.meal_type == 'lunch' %}☀️{% elif meal.meal_type == 'dinner' %}🌙{% else %}🍎{% endif %}
+    </div>
+    {% endif %}
+    <div class="meal-info">
+      <div class="meal-nm">{{ meal.food_name|default:"Unnamed Meal" }}</div>
+      <div class="meal-meta">{{ meal.get_meal_type_display }} · {{ meal.logged_at|time:"g:i A" }}</div>
+    </div>
+    <div class="meal-macros">
+      <span class="macro-chip" style="background:rgba(0,229,160,0.1);color:var(--green)">{{ meal.calories|floatformat:0 }} kcal</span>
+      <span class="macro-chip" style="background:rgba(79,142,247,0.1);color:var(--blue)">P: {{ meal.protein_g|floatformat:0 }}g</span>
+      <span class="macro-chip" style="background:rgba(255,112,67,0.1);color:var(--orange)">C: {{ meal.carbs_g|floatformat:0 }}g</span>
+      <span class="macro-chip" style="background:rgba(156,111,222,0.1);color:var(--purple)">F: {{ meal.fat_g|floatformat:0 }}g</span>
+      <a href="{% url 'delete_meal' meal.id %}" style="color:var(--text3);font-size:0.85rem;margin-left:4px" onclick="return confirm('Delete this meal?')">✕</a>
+    </div>
+  </div>
+  {% endfor %}
+  {% empty %}
+  <div style="text-align:center;padding:60px 20px;color:var(--text3)">
+    <div style="font-size:3rem;margin-bottom:12px">🍽️</div>
+    <p style="font-size:1rem;margin-bottom:16px">No meals logged yet!</p>
+    <a href="{% url 'log_meal' %}" class="btn btn-primary">Log your first meal</a>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}
