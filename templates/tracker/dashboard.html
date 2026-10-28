@@ -19,7 +19,10 @@
 @media(max-width:768px) { .sidebar { display: none; } .main { padding: 16px; } }
 
 /* STAT CARDS */
-.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; position: relative; overflow: hidden; }
+.stat-card { 
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; 
+  position: relative; z-index: 1; overflow: visible; 
+}
 .stat-card::before { content: ''; position: absolute; inset: 0; border-radius: var(--radius); background: linear-gradient(135deg, rgba(255,255,255,0.02), transparent); pointer-events: none; }
 .stat-icon { font-size: 1.6rem; margin-bottom: 10px; }
 .stat-val { font-size: 2rem; font-weight: 800; font-family: 'JetBrains Mono', monospace; line-height: 1; }
@@ -33,11 +36,11 @@
 .macro-val { font-weight: 700; font-family: 'JetBrains Mono', monospace; }
 
 /* WATER SECTION */
-.water-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; }
+.water-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 14px; position: relative; z-index: 2; }
 .water-btn {
   background: var(--bg3); border: 1.5px solid var(--border); border-radius: var(--radius-sm);
   color: var(--text2); padding: 10px 6px; font-size: 0.8rem; font-weight: 600;
-  cursor: pointer; transition: all 0.2s; text-align: center; font-family: 'Sora', sans-serif;
+  cursor: pointer; transition: all 0.2s; text-align: center; font-family: 'Sora', sans-serif; position: relative; z-index: 3;
 }
 .water-btn:hover { border-color: var(--blue); color: var(--blue); background: rgba(79,142,247,0.08); }
 
@@ -92,7 +95,7 @@
     <!-- Header -->
     <div class="flex-between mb-24">
       <div>
-        <h1 style="font-size:1.5rem;font-weight:800">Good {% now "H" as hour %}{% if hour < "12" %}Morning{% elif hour < "17" %}Afternoon{% else %}Evening{% endif %}, {{ user.first_name|default:user.username }} 👋</h1>
+        <h1 style="font-size:1.5rem;font-weight:800">Good {% now "H" as hour %}{% if hour < "12" %}Morning{% elif hour < "17" %}Afternoon{% else %}Evening{% endif %}, {{ user.first_name|default:"there" }}</h1>
         <p style="color:var(--text2);margin-top:4px;font-size:0.875rem">{{ today|date:"l, F j, Y" }}</p>
       </div>
       <a href="{% url 'log_meal' %}" class="btn btn-primary">+ Log Meal</a>
@@ -148,7 +151,7 @@
             <a href="{% url 'log_meal' %}" class="btn btn-outline" style="padding:6px 14px;font-size:0.8rem">+ Add</a>
           </div>
           <div class="grid-4" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
-           
+            
             <div class="meal-type-card"><div class="meal-emoji">🌅</div><div class="meal-name">Breakfast</div><div class="meal-cal" id="cal-breakfast">0 kcal</div></div>
             <div class="meal-type-card"><div class="meal-emoji">☀️</div><div class="meal-name">Lunch</div><div class="meal-cal" id="cal-lunch">0 kcal</div></div>
             <div class="meal-type-card"><div class="meal-emoji">🌙</div><div class="meal-name">Dinner</div><div class="meal-cal" id="cal-dinner">0 kcal</div></div>
@@ -157,7 +160,7 @@
           {% for meal in meals_today %}
           <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
             <div style="display:flex;align-items:center;gap:10px">
-              {% if meal.image %}<img src="{{ meal.image.url }}" style="width:40px;height:40px;border-radius:8px;object-fit:cover">{% else %}<div style="width:40px;height:40px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-size:1.2rem">🍽️</div>{% endif %}
+              {% if meal.image %}<img src="{{ meal.image.url }}" style="width:40px;height:40px;border-radius:8px;object-fit:cover">{% else %}<div style="width:40px;height:40px;border-radius:8px;background:var(--bg3);display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:1.2rem">🍽️</div>{% endif %}
               <div>
                 <div style="font-size:0.875rem;font-weight:600">{{ meal.food_name|default:"Unnamed meal" }}</div>
                 <div style="font-size:0.75rem;color:var(--text2)">{{ meal.get_meal_type_display }} · {{ meal.logged_at|time:"g:i A" }}</div>
@@ -226,10 +229,10 @@
         <!-- Weight Log -->
         <div class="stat-card">
           <div style="font-weight:700;margin-bottom:14px">⚖️ Weight Log</div>
-          <form action="{% url 'log_weight' %}" method="post" style="display:flex;gap:8px;margin-bottom:12px">
+          <form action="{% url 'log_weight' %}" method="post" style="display:flex;gap:8px;margin-bottom:12px;position:relative;z-index:3">
             {% csrf_token %}
-            <input type="number" name="weight_kg" step="0.1" placeholder="kg" style="flex:1" required>
-            <button type="submit" class="btn btn-primary" style="padding:10px 16px;white-space:nowrap">Log</button>
+            <input type="number" name="weight_kg" step="0.1" placeholder="kg" style="flex:1;position:relative;z-index:3" required>
+            <button type="submit" class="btn btn-primary" style="padding:10px 16px;white-space:nowrap;position:relative;z-index:3">Log</button>
           </form>
           {% for wl in weight_logs %}
           <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:0.82rem">
@@ -286,18 +289,23 @@ function logWater(type, amount) {
     if (data.success) {
       // Update display
       const totalEl = document.getElementById('waterTotal');
-      let cur = parseInt(totalEl.textContent);
-      cur += amount;
-      totalEl.textContent = cur + 'ml';
+      const current = Number.parseInt((totalEl.textContent || '0').replace(/\D+/g, ''), 10) || 0;
+      const updated = current + amount;
+      totalEl.textContent = updated + 'ml';
       const goal = {{ water_goal }};
-      const pct = Math.min(100, (cur/goal)*100);
+      const pct = Math.min(100, (updated/goal)*100);
       document.getElementById('waterBar').style.width = pct + '%';
       // Show notification
       const notif = document.createElement('div');
       notif.className = 'message message-success';
       notif.textContent = `✓ +${amount}ml ${type} logged!`;
-      document.querySelector('.messages-container') || document.body.appendChild(Object.assign(document.createElement('div'),{className:'messages-container',style:'position:fixed;top:80px;right:24px;z-index:1000'}));
-      (document.querySelector('.messages-container')).appendChild(notif);
+      const existing = document.querySelector('.messages-container');
+      const container = existing || Object.assign(document.createElement('div'), {
+        className: 'messages-container',
+        style: 'position:fixed;top:80px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;'
+      });
+      if (!existing) document.body.appendChild(container);
+      container.appendChild(notif);
       setTimeout(() => notif.remove(), 3000);
     }
   });
