@@ -115,7 +115,4 @@ Login with superuser credentials to manage all users and data.
 ---
 
 ## 💰 API Key Cost
-- New Anthropic accounts get **$5 free credits**
-- Each food image analysis costs ~$0.001-0.003
-- $5 = **thousands of food scans**
-- Get key: https://console.anthropic.com
+
